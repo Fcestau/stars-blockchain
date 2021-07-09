@@ -65,6 +65,12 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
+            await self.validateChain().then((res) => {
+                if (res != 'Chain valid') {
+                    reject(new Error("Invalid Blockchain"))
+                    return;
+                }
+            })
             block.height = self.chain.length;
             block.time = new Date().getTime().toString().slice(0,-3);
             if (self.chain.length > 0) {
@@ -77,6 +83,7 @@ class Blockchain {
             else {
                 reject(new Error("Invalid block."))
             }
+             
         })
         .catch(err => console.log(err))
         .then(block => {
@@ -202,21 +209,28 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            self.chain.forEach(block => {
-                if (block.validate()) {
-                    if (block.height > 0) {
-                        let prevBlock = self.chain.filter(b => b.height == block.height-1)[0];
-                        if (prevBlock.hash != block.previousBlockHash) {
-                            const err = 'Invalid link ' + block.height + ' not linked to ' + block.height -1;
-                            errorLog.push(err)
+            if (self.chain.length > 1)  {
+                self.chain.forEach(block => {
+                    if (block.validate()) {
+                        if (block.height > 0) {
+                            let prevBlock = self.chain.filter(b => b.height == block.height-1)[0];
+                            if (prevBlock.hash != block.previousBlockHash) {
+                                const err = 'Invalid link ' + block.height + ' not linked to ' + block.height -1;
+                                errorLog.push(err)
+                            }
                         }
+                    } else {
+                        const err = 'Block ' + block.height + ' invalid: '+block.hash;
+                        errorLog.push(err)
                     }
-                } else {
-                    const err = 'Block ' + block.height + ' invalid: '+block.hash;
-                    errorLog.push(err)
-                }
-
-            })
+    
+                })
+                if (errorLog == null) { resolve("Chain valid")} else { resolve(errorLog)}
+            } else {
+                resolve("Chain valid")
+            }
+            
+            
         });
     }
 
