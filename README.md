@@ -1,5 +1,5 @@
-#	Private Blockchain Application
-An app created for the Udacity Blockchain Developer Nanodegree.
+#	Private Blockchain Application - Register ownership
+App created for the Udacity Blockchain Developer Nanodegree.
 
 # Instructions
 1. Download this repo, and install node js.
