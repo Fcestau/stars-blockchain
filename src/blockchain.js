@@ -65,25 +65,26 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            await self.validateChain().then((res) => {
-                if (res != 'Chain valid') {
-                    reject(new Error("Invalid Blockchain"))
-                    return;
+            self.validateChain()
+            .then((res) => {
+                console.log(res)
+                if (res == "Chain valid") {
+                    block.height = self.chain.length;
+                    block.time = new Date().getTime().toString().slice(0,-3);
+                    if (self.chain.length > 0) {
+                        block.previousBlockHash = self.chain[this.chain.length-1].hash;
+                    }
+                    block.hash = SHA256(JSON.stringify(block)).toString(); 
+                    if (block.hash.length == 64 && block.time) {
+                        resolve(block);
+                    }
+                    else {
+                        reject(new Error("Invalid block."))
+                    }   
+                } else {
+                    reject(new Error("Cannot add, Blockchain invalid"))
                 }
             })
-            block.height = self.chain.length;
-            block.time = new Date().getTime().toString().slice(0,-3);
-            if (self.chain.length > 0) {
-                block.previousBlockHash = self.chain[this.chain.length-1].hash;
-            }
-            block.hash = SHA256(JSON.stringify(block)).toString(); 
-            if (block.hash.length == 64 && block.time) {
-                resolve(block);
-            }
-            else {
-                reject(new Error("Invalid block."))
-            }
-             
         })
         .catch(err => console.log(err))
         .then(block => {
@@ -104,7 +105,7 @@ class Blockchain {
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
             let time = new Date().getTime().toString().slice(0,-3)
-            let unsignedMessage = `${address}:${time}}:starRegistry`;
+            let unsignedMessage = `${address}:${time}:starRegistry`;
             resolve(unsignedMessage)
         });
     }
