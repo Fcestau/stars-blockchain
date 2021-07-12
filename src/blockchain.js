@@ -67,7 +67,6 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             self.validateChain()
             .then((res) => {
-                console.log(res)
                 if (res == "Chain valid") {
                     block.height = self.chain.length;
                     block.time = new Date().getTime().toString().slice(0,-3);
@@ -76,7 +75,9 @@ class Blockchain {
                     }
                     block.hash = SHA256(JSON.stringify(block)).toString(); 
                     if (block.hash.length == 64 && block.time) {
-                        resolve(block);
+                        this.chain.push(block)
+                        this.height = this.chain.length -1;
+                        resolve(block)   
                     }
                     else {
                         reject(new Error("Invalid block."))
@@ -86,12 +87,7 @@ class Blockchain {
                 }
             })
         })
-        .catch(err => console.log(err))
-        .then(block => {
-            this.chain.push(block)
-            this.height = this.chain.length -1;
-            return block;
-        })     
+        .catch(err => console.log(err))            
     }
 
     /**
@@ -133,11 +129,14 @@ class Blockchain {
             let requestTime = parseInt(message.split(':')[1]);
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
             if  ((currentTime - requestTime) <= (300))  {
-                bitcoinMessage.verify(message, address, signature)
-                let block = new BlockClass.Block({star});
-                block.owner = address;
-                await self._addBlock(block)
-                resolve(block)
+                if (bitcoinMessage.verify(message, address, signature)) {
+                    let block = new BlockClass.Block({star}); 
+                    block.owner = address;
+                    let resa = await self._addBlock(block)
+                    resolve(block)
+                } else {
+                    reject("Invalid message.");
+                }
             } else {
                 reject("Request timed out.");
             }
@@ -184,12 +183,15 @@ class Blockchain {
     getStarsByWalletAddress (address) {
         let self = this;
         let stars = [];
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             let ownedBlocks = self.chain.filter(block => block.owner === address )
             if (ownedBlocks.length < 0) {
                 reject(new Error('Address not found.'))
             } else {
-                stars = ownedBlocks.map(block => JSON.parse(hex2ascii(block.body)))
+                for (let block of ownedBlocks) {
+                    let star = await block.getBData()
+                    stars.push(star)
+                }
                 if (stars) {
                     resolve(stars)
                 }
@@ -211,8 +213,9 @@ class Blockchain {
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
             if (self.chain.length > 1)  {
-                self.chain.forEach(block => {
-                    if (block.validate()) {
+                for (let block  of self.chain) {
+                    let valid = await block.validate()
+                    if (valid) {
                         if (block.height > 0) {
                             let prevBlock = self.chain.filter(b => b.height == block.height-1)[0];
                             if (prevBlock.hash != block.previousBlockHash) {
@@ -224,14 +227,11 @@ class Blockchain {
                         const err = 'Block ' + block.height + ' invalid: '+block.hash;
                         errorLog.push(err)
                     }
-    
-                })
-                if (errorLog == null) { resolve("Chain valid")} else { resolve(errorLog)}
+                }
+                if (errorLog.length < 1) { resolve("Chain valid")} else { resolve(errorLog)}
             } else {
                 resolve("Chain valid")
             }
-            
-            
         });
     }
 
